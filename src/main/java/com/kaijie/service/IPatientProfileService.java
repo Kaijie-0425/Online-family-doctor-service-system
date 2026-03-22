@@ -13,4 +13,10 @@ import com.baomidou.mybatisplus.extension.service.IService;
  */
 public interface IPatientProfileService extends IService<PatientProfile> {
 
+    // 根据 username 获取居民档案
+    PatientProfile getProfileByUsername(String username);
+
+    // 根据 username 保存或更新居民档案
+    boolean saveOrUpdateProfile(String username, PatientProfile profile);
+
 }

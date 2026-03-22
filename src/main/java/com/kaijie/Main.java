@@ -5,7 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-@MapperScan("com.kaijie.mapper") // 告诉 Spring Boot 你的 Mapper/Dao 接口都在这个包下
+@MapperScan("com.kaijie.mapper")
 public class Main {
     public static void main(String[] args) {
         SpringApplication.run(Main.class, args);
