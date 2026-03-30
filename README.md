@@ -167,5 +167,85 @@ ADD CONSTRAINT uq_appointment_patient_schedule UNIQUE (patient_id, schedule_id);
 
 ---
 
+## 第四部分：智能健康评估与自查（新增）
+
+本次迭代新增“智能健康评估与自查”模块，包含两大能力：
+- 基于大模型的症状初步评估（AI 医生建议）
+- 居民体征数据录入、预警与趋势查询
+
+实现要点
+- AI 调用：后端通过 `RestTemplate` 调用外部模型服务（示例采用 硅基流动 平台 API: `https://api.siliconflow.cn/v1/chat/completions`），请求/响应按 OpenAI-like chat completion 格式交互，最终从返回 JSON 中提取 `choices[0].message.content` 并原样返回给前端。
+- 体征录入：居民角色（`roleType == 2`）可录入体征，系统按规则生成预警信息并入库（表：`health_vital_signs`）。
+- 鉴权与权限：所有接口需带 JWT；服务层进一步校验 `sys_user.role_type` 防止越权。
+
+接口字典（新增）
+- POST `/api/health/assess`
+  - 描述：基于用户输入症状，调用大模型返回初步健康评估建议（字符串）。
+  - 请求 Body: `{ "symptoms": "..." }`（JSON）
+  - 权限：需登录（任意角色）
+  - 返回：HTTP 200 + 原始字符串（或在 AI 离线时返回固定提示："AI 医生暂时离线，请直接预约在线问诊。"）
+
+- POST `/api/health/vitals`
+  - 描述：居民录入体征数据并保存，若触发预警返回预警信息。
+  - 请求 Body: `{ "systolicBp":150, "diastolicBp":95, "bloodSugar":7.5, "heartRate":102 }`
+  - 权限：仅居民（roleType == 2）可调用
+  - 返回：HTTP 200 + 字符串，示例："体征指标正常" 或 "预警：血压偏高; 心率异常"
+
+- GET `/api/health/vitals/trend?days=7`
+  - 描述：获取当前登录居民最近 `days` 天的体征记录（按日期升序）
+  - 权限：需登录（居民）
+  - 返回：HTTP 200 + JSON 数组，元素为 `HealthVitalSigns` 实体字段
+
+鉴权 / 授权错误行为
+- 未登录或 Token 无效：后端会抛出 `UnauthenticatedException`，由全局异常处理器映射为 HTTP 401，响应体为纯文本错误消息，例如："未登录，请先登录" 或 "用户不存在或未登录"。
+- 权限不足（例如 医生 调用体征录入接口）：后端会抛出 `PermissionDeniedException`，映射为 HTTP 403，响应体为纯文本消息，例如："只有居民用户可以录入体征"。
+- 其他服务异常：HTTP 500，响应体为异常消息或通用提示（"服务器错误"）。
+
+关于 API Key（重要）
+- 为了调用外部大模型服务，后端代码中有一个 API Key 常量占位：
+  - `HealthVitalSignsServiceImpl` 文件中的 `SILICONFLOW_API_KEY` 已设置为占位字符串 `REPLACE_WITH_YOUR_API_KEY`（请务必替换）。
+- 安全建议：不要把真实 API Key 硬编码到源码。推荐做法：
+  1. 把密钥放在 `application.yml` 中的自定义属性（并在部署时通过配置管理替换），或
+  2. 使用环境变量（例如 `SILICONFLOW_API_KEY`），并在启动脚本/容器定义中注入。示例（macOS zsh）：
+
+```bash
+export SILICONFLOW_API_KEY="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+mvn spring-boot:run
+```
+
+或者在生产容器里通过 Secrets/环境变量注入。
+
+示例请求（curl）
+- 症状评估：
+```bash
+curl -X POST http://localhost:8080/api/health/assess \
+  -H "Authorization: Bearer <你的JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{"symptoms":"我最近头晕、心悸"}'
+```
+
+- 体征录入（居民）：
+```bash
+curl -X POST http://localhost:8080/api/health/vitals \
+  -H "Authorization: Bearer <你的JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{"systolicBp":150,"diastolicBp":95,"bloodSugar":7.5,"heartRate":102}'
+```
+
+- 趋势查询：
+```bash
+curl -X GET 'http://localhost:8080/api/health/vitals/trend?days=7' \
+  -H "Authorization: Bearer <你的JWT>"
+```
+
+返回示例与格式化建议
+- AI 文本通常为多行说明，后端会原样返回该字符串。若需前端展示更友好，可选择在前端或后端对该字符串做格式化：
+  - 极简版（单行）/ 多行（段落 + 列表）/ 结构化 JSON（便于渲染）三种形式均可；建议后端默认返回原始字符串，由前端按场景展示或调用后端提供的格式化工具。
+
+日志与审计
+- 建议在生产环境开启调用审计（例如把 AI 原始返回与请求日志写入审计表或日志系统），以便事后回溯和质量评估（注意脱敏）。
+
+以上文档已合入本 README。如需我将该节单独生成为 `docs/health_assessment.md` 或追加到 `Step1.md`，我可以继续执行并提交修改。
+
 如果你希望我把本节内容作为 `docs/architecture_addendum.md` 单独写入仓库或追加到 `Step1.md` 中，请告知。我可以立刻把此 README.md 内容同步到指定位置。欢迎指定后续操作。
 

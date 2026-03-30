@@ -37,15 +37,6 @@
             </PendingDiffInfo>
           </value>
         </entry>
-        <entry key="$PROJECT_DIR$/src/main/resources/application.yml">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/src/main/resources/application.yml" />
-              <option name="originalContent" value="spring:&#10;  datasource:&#10;    driver-class-name: com.mysql.cj.jdbc.Driver&#10;    url: jdbc:mysql://localhost:3306/family_doctor_db?useUnicode=true&amp;characterEncoding=utf-8&amp;serverTimezone=Asia/Shanghai&#10;    username:  root&#10;    password:  root&#10;&#10;mybatis-plus:&#10;  mapper-locations: classpath*:/mapper/**/*.xml&#10;  configuration:&#10;    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 开启控制台 SQL 打印日志&#10;" />
-              <option name="updatedContent" value="spring:&#10;  datasource:&#10;    driver-class-name: com.mysql.cj.jdbc.Driver&#10;    url: jdbc:mysql://localhost:3306/family_doctor_db?useUnicode=true&amp;characterEncoding=utf-8&amp;serverTimezone=Asia/Shanghai&#10;    username:  root&#10;    password:  root&#10;&#10;mybatis-plus:&#10;  mapper-locations: classpath*:/mapper/**/*.xml&#10;  configuration:&#10;    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 开启控制台 SQL 打印日志&#10;&#10;logging:&#10;  level:&#10;    root: INFO&#10;    com.kaijie: INFO&#10;" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
       </map>
     </option>
   </component>
