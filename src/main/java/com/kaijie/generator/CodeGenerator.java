@@ -31,7 +31,8 @@ public class CodeGenerator {
                 "health_daily_record",
                 "diet_exercise_plan",
                 "doc_schedule",
-                "doc_appointment"
+                "doc_appointment",
+                "health_vital_signs"
         );
 
         // 输出目录
