@@ -29,7 +29,9 @@ public class CodeGenerator {
                 "med_prescription",
                 "med_prescription_item",
                 "health_daily_record",
-                "diet_exercise_plan"
+                "diet_exercise_plan",
+                "doc_schedule",
+                "doc_appointment"
         );
 
         // 输出目录

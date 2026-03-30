@@ -1,6 +1,8 @@
 package com.kaijie.security;
 
 import io.jsonwebtoken.Claims;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,9 +22,15 @@ import java.util.List;
  */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String header = request.getHeader("Authorization");
+        if (header == null || header.isEmpty()) {
+            log.warn("No Authorization header present for request: {} {}", request.getMethod(), request.getRequestURI());
+        }
+
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
             try {
@@ -59,7 +67,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             } catch (Exception ex) {
-                // token 无效或解析出错，忽略让后续的安全机制处理（请求会最终被拒绝）
+                // token 无效或解析出错，记录日志并忽略让后续的安全机制处理（请求会最终被拒绝）
+                log.warn("Failed to parse/validate token for request {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
             }
         }
 
