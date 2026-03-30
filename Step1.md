@@ -1,21 +1,4 @@
-1. **配置外置**：当前 `JwtUtils` 使用硬编码的 `SECRET_KEY`，后续需移至 `application.yml` 并通过 `@Value` 注入。
-2. **引入 DTO 与校验**：已引入 ArticlePublishDTO、ContractApplyDTO、ContractAuditDTO 等 DTO。建议后续为所有接口引入 DTO，并结合 `@Valid` 注解进行参数校验，对身份证等敏感字段做脱敏处理。
-3. **全局异常与响应封装**：补充全局统一异常处理器（`@ControllerAdvice`）和标准化的 API 响应体（如 `ResponseResult`）。
-4. **扩展身份信息**：若业务层频繁需要用户全量信息，建议实现自定义 `UserDetails` 以便从 SecurityContext 快速获取用户 ID 和状态。
-     Bash
 
-     ```
-     curl -H "Authorization: Bearer <填入你的token>" http://localhost:8080/api/article/1
-     ```
-
-6. **调用合同管理接口 (需携带 Token)**：
-
-   - **申请签约**：
-   - **获取文章详情**：
-     ```
-     curl -H "Authorization: Bearer <填入你的token>" http://localhost:8080/api/article/list?category=饮食
-     ```
-     Bash
 # 🩺 家庭医生在线服务系统 - 技术变更与使用说明
 
 > **文档版本**：V1.1
