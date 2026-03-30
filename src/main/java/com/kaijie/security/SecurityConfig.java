@@ -7,7 +7,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import com.kaijie.security.RestAuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -30,8 +29,6 @@ public class SecurityConfig {
                 .csrf().disable()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
-                .exceptionHandling().authenticationEntryPoint(new RestAuthenticationEntryPoint())
-                .and()
                 .authorizeRequests()
                     .antMatchers(
                             "/api/auth/login",
@@ -41,7 +38,8 @@ public class SecurityConfig {
                             "/swagger-resources/**",
                             "/swagger-ui/**",
                             "/swagger-ui.html",
-                            "/webjars/**"
+                            "/webjars/**",
+                            "/api/ws/**"
                     ).permitAll()
                     .anyRequest().authenticated()
                 .and()
