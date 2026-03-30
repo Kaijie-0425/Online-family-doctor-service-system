@@ -249,3 +249,142 @@ curl -X GET 'http://localhost:8080/api/health/vitals/trend?days=7' \
 
 如果你希望我把本节内容作为 `docs/architecture_addendum.md` 单独写入仓库或追加到 `Step1.md` 中，请告知。我可以立刻把此 README.md 内容同步到指定位置。欢迎指定后续操作。
 
+---
+
+# Online_Family_Doctor_Service_System
+
+一个基于 Spring Boot 2.7 + MyBatis-Plus 的示例医疗问诊系统（基础包名：`com.kaijie`）。
+
+本次仓库已实现/集成的关键点（摘要）
+
+- Spring Boot 2.7
+- MyBatis-Plus ORM
+- Spring Security + JWT（已实现基础认证/鉴权）
+- 基于 Java WebSocket (@ServerEndpoint) 的医患实时问诊聊天室（WebSocket 服务端位于 `com.kaijie.websocket`）
+
+---
+
+WebSocket 聊天室（实现说明）
+
+1. 端点
+
+- WebSocket 连接地址（模板）:
+  `ws://<host>:<port>/api/ws/chat/{consultationId}/{token}`
+  - `consultationId`：问诊房间 ID（对应数据库表 `im_consultation_record.id`）
+  - `token`：JWT（后端会解析 token 得到 username / userId，用于鉴权与定位用户）
+
+2. 重要行为与安全校验
+
+- 在 `@OnOpen`（连接建立）阶段会：
+  1. 解析 `token` 得到 `username`，再读取用户信息（User）以获取 `userId`。
+  2. 立即查询问诊房间记录（调用 `IConsultationRecordService.getById(consultationId)`）。
+  3. 核心越权校验：只有当 `userId` 等于该房间的 `patient_id` 或 `doctor_id` 时才允许进入；否则直接抛出异常并中断连接（按设计：非法连接应被立刻断开）。
+
+- 在 `@OnMessage` 阶段：
+  - 接收客户端发送的 JSON（形如 {"msgType":"text","content":"..."}），将其解析为 `ChatMessageDTO`，封装为 `ImChatMessage`（实体），并持久化到 `im_chat_message` 表。
+  - 将消息推送到同房间的对端（如果其在线且 Session.open），否则仅持久化保存供离线处理。
+
+- 日志策略（便于排查静默失败）：
+  - 关键点（进入方法、收到消息、插入数据库前后、推送结果、异常）均使用 `System.out.println("...")` 打印明确日志，不吞掉异常。
+
+3. 时间序列化
+
+- 为了支持 Java 8 的 `LocalDateTime` 序列化，WebSocket 服务端的 `ObjectMapper` 已注册 `JavaTimeModule` 并禁用了 `WRITE_DATES_AS_TIMESTAMPS`，以便使用 ISO-8601 文本格式传输时间字段。
+- 如未在 `pom.xml` 中声明，请确保添加依赖：
+
+```xml
+<dependency>
+  <groupId>com.fasterxml.jackson.datatype</groupId>
+  <artifactId>jackson-datatype-jsr310</artifactId>
+</dependency>
+```
+
+4. 相关类/文件
+
+- WebSocketServer: `com.kaijie.websocket.ChatWebSocketServer`
+- WebSocket 工具注入: `com.kaijie.config.WebSocketBeanUtil`
+- DTO: `com.kaijie.dto.ChatMessageDTO`（包含 `msgType` 和 `content`）
+- 问诊记录实体: `com.kaijie.entity.ConsultationRecord`（对应表 `im_consultation_record`）
+- 消息实体: `com.kaijie.entity.ChatMessage`（对应表 `im_chat_message`）
+
+---
+
+HTTP 接口（与聊天室相关）
+
+- 启动问诊（示例）
+  - POST `/api/consultation/start`，参数：`doctorId`（Long）
+  - 业务逻辑（`ImConsultationRecordServiceImpl.startConsultation`）会：
+    1. 打印进入日志（包含 username、目标医生 id）
+    2. 校验请求用户角色（仅居民 roleType==2 可发起）
+    3. 构造问诊记录并设置 `status=1`（进行中），调用 `mapper.insert(record)` 前后打印日志，并返回生成的 `id`
+
+- 拉取历史消息
+  - GET `/api/consultation/history`，参数：`consultationId`（Long）
+  - `ImChatMessageServiceImpl.getHistoryMessages(consultationId)` 返回该房间按 `send_time` 升序的所有消息
+
+---
+
+常见问题与故障排查
+
+1. MySQL 插入失败：
+
+错误样例：
+```
+java.sql.SQLException: Field 'symptom_desc' doesn't have a default value
+```
+原因与处理：
+- 这个错误通常由 MySQL 的严格模式（strict mode）导致：当表中某列定义为 NOT NULL 且没有默认值时，插入语句未为该列提供值就会报错。
+- 解决方法：
+  1. 在插入前为实体的 `symptomDesc` 字段设置值（推荐）；
+  2. 或在数据库层为 `symptom_desc` 列设置默认值或允许 NULL；
+  3. 或修改 MySQL 配置（不推荐）以关闭严格模式。
+
+2. WebSocket 连接被立即断开
+- 如果你在 `OnOpen` 抛出异常（例如越权校验失败），WebSocket 将被容器中断，客户端会看到连接失败或瞬断（1006/1011）。这属于设计行为以阻止非法访问。
+
+3. Jackson 时间序列化问题
+- 如果你发现时间以时间戳显示或解析失败，请确认项目已加入 `jackson-datatype-jsr310` 并且 `ObjectMapper` 注册了 `JavaTimeModule`。
+
+---
+
+本地编译与测试（快速指南）
+
+1. 构建：
+
+```bash
+mvn clean package -DskipTests
+```
+
+2. 启动：
+
+```bash
+java -jar target/Online_Family_Doctor_Service_System-1.0-SNAPSHOT.jar
+```
+
+3. 测试 WebSocket（示例，使用 wscat）：
+
+```bash
+npm install -g wscat
+wscat -c "ws://localhost:8080/api/ws/chat/1/你的_JWT_token"
+# 连接后发送如下消息示例
+{"msgType":"text","content":"你好，医生"}
+```
+
+日志检查点（在控制台）
+
+- 连接建立：========== [WS] OnOpen 触发！房间号: x, Token: y ==========
+- 用户加入：>>> 用户 <id> 成功加入房间！当前在线人数: N
+- 收到消息：========== [WS] 收到新消息: {...} ==========
+- 插入 DB 前：>>> 准备执行 MyBatis-Plus 插入操作...
+- 插入成功：>>> 插入成功！生成的问诊房间 ID: <id>
+- 推送信息：>>> 已将消息推送给用户 <id> / 用户 <id> 不在线或 session 已关闭
+
+---
+
+后续工作（建议）
+
+- 若需要，我可以继续：
+  1. 完整实现 `ChatMessageDTO`、`WebSocketConfig.java`（返回 `ServerEndpointExporter` 的 @Bean），
+  2. 完整实现 `ImConsultationRecordServiceImpl.startConsultation` 与 `ImChatMessageServiceImpl.getHistoryMessages` 与 Controller（按你之前给出的详细日志要求）。
+
+如需我把 README 里某段内容改成更详细的 API 文档或加入示例请求/响应，请告诉我你想补充的部分，我会继续更新。

@@ -13,4 +13,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
  */
 public interface IConsultationRecordService extends IService<ConsultationRecord> {
 
+    // 启动问诊，会返回生成的问诊记录 ID
+    Long startConsultation(String username, Long doctorId);
+
 }
