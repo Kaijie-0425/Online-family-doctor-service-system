@@ -43,7 +43,7 @@ public class HealthVitalSignsServiceImpl extends ServiceImpl<HealthVitalSignsMap
 	@Autowired
 	private ObjectMapper objectMapper;
 
-	private static final String SILICONFLOW_API_KEY = "sk-zqtwspyruewxfzknzhbpfozmkczgsjifmfhzoybxsctsplfs";
+	private static final String SILICONFLOW_API_KEY = "sk-vdoxaybbvtytxugvfunyofvjlpcdejccknlajgwptbypezfr";
 	private static final String SILICONFLOW_URL = "https://api.siliconflow.cn/v1/chat/completions";
 
 	@Override

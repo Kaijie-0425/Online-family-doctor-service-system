@@ -2,4 +2,32 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.kaijie.mapper.ScheduleMapper">
 
+	<!-- 原子性地为某个医生选择一条最近的可用排班并将 available_capacity 减 1 -->
+	<update id="decrementAvailableByDoctorId" parameterType="long">
+		<!--
+			说明：使用子查询选出一条最近且 available_capacity>0 的排班记录，然后对该条记录做减一操作，保证原子性。
+			该语法在 MySQL 中可用（UPDATE ... JOIN (SELECT ... LIMIT 1) t ON ...）
+		-->
+		UPDATE doc_schedule s
+		JOIN (
+			SELECT id FROM doc_schedule
+			WHERE doctor_id = #{doctorId} AND schedule_date >= CURDATE() AND available_capacity > 0
+			ORDER BY schedule_date, shift_type
+			LIMIT 1
+		) t ON s.id = t.id
+		SET s.available_capacity = s.available_capacity - 1
+	</update>
+
+	<!-- 按医生 id 列表聚合剩余号源数量（只统计今天及以后的排班） -->
+	<select id="sumAvailableByDoctorIds" resultType="map" parameterType="java.util.List">
+		SELECT doctor_id as doctorId, SUM(available_capacity) as total
+		FROM doc_schedule
+		WHERE doctor_id IN
+		<foreach collection="doctorIds" item="id" open="(" separator="," close=")">
+			#{id}
+		</foreach>
+		AND schedule_date >= CURDATE()
+		GROUP BY doctor_id
+	</select>
+
 </mapper>

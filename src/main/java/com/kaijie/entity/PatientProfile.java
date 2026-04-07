@@ -37,6 +37,10 @@ public class PatientProfile implements Serializable {
     @TableField("user_id")
     private Long userId;
 
+    @ApiModelProperty("关联sys_user表的居民登录名（冗余，便于查询与展示）")
+    @TableField("user_name")
+    private String userName;
+
     @ApiModelProperty("身份证号 (建议后端脱敏/加密存储)")
     @TableField("id_card")
     private String idCard;

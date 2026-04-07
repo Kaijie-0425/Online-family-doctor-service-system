@@ -42,6 +42,8 @@ public class PatientProfileServiceImpl extends ServiceImpl<PatientProfileMapper,
         Long userId = user.getId();
         // 强制设置 userId，防止越权
         profile.setUserId(userId);
+        // 同步冗余的 username 到档案表
+        profile.setUserName(username);
 
         // 检查是否已存在该用户的档案
         PatientProfile existing = this.baseMapper.selectOne(new QueryWrapper<PatientProfile>().eq("user_id", userId));
